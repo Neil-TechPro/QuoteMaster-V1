@@ -60,7 +60,7 @@ export function Login() {
           </div>
         )}
 
-        <div className="pt-4">
+        <div className="pt-4 space-y-4">
           <button
             onClick={handleLogin}
             disabled={signingIn}
@@ -71,6 +71,16 @@ export function Login() {
               {signingIn ? 'Checking Account...' : 'Sign in with Google'}
             </span>
           </button>
+
+          <div className="pt-6 border-t border-slate-100 mt-6">
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-3">Having trouble logging in?</p>
+            <button
+              onClick={() => window.open(window.location.origin, '_blank')}
+              className="text-[10px] text-primary font-black uppercase tracking-widest hover:underline"
+            >
+              Open in a New Tab to Fix Redirect Loop
+            </button>
+          </div>
         </div>
 
         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
