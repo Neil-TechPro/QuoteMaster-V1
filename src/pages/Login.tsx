@@ -1,9 +1,38 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export function Login() {
-  const { login } = useAuth();
+  const { login, user, loading: authLoading } = useAuth();
+  const [error, setError] = React.useState<string | null>(null);
+  const [signingIn, setSigningIn] = React.useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/');
+    }
+  }, [user, authLoading, navigate]);
+
+  const handleLogin = async () => {
+    setError(null);
+    setSigningIn(true);
+    try {
+      await login();
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      if (err.code === 'auth/popup-blocked') {
+        setError("Sign-in popup was blocked. Please allow popups for this site.");
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setError("Sign-in process was cancelled.");
+      } else {
+        setError("Failed to sign in. Please try again.");
+      }
+    } finally {
+      setSigningIn(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
@@ -14,13 +43,22 @@ export function Login() {
           <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">Enterprise SaaS Billing</p>
         </div>
         
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-xs font-bold animate-in fade-in slide-in-from-top-1">
+            {error}
+          </div>
+        )}
+
         <div className="pt-4">
           <button
-            onClick={login}
-            className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-4 px-6 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-xl"
+            onClick={handleLogin}
+            disabled={signingIn}
+            className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-4 px-6 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-xl disabled:opacity-50"
           >
             <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5 invert" />
-            <span className="text-sm uppercase tracking-widest">Sign in with Google</span>
+            <span className="text-sm uppercase tracking-widest">
+              {signingIn ? 'Checking Account...' : 'Sign in with Google'}
+            </span>
           </button>
         </div>
 

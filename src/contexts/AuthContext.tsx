@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User as FirebaseUser, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  User as FirebaseUser, 
+  signInWithRedirect, 
+  getRedirectResult,
+  GoogleAuthProvider, 
+  signOut 
+} from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
@@ -21,6 +28,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let unsubscribeProfile: (() => void) | null = null;
 
+    // Handle sign-in redirect result
+    const handleRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.log("Successfully back from redirect login.");
+        }
+      } catch (err) {
+        console.error("Redirect login result error:", err);
+      }
+    };
+    handleRedirect();
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       
@@ -30,11 +50,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (u) {
+        console.log("User authenticated:", u.email);
         unsubscribeProfile = onSnapshot(doc(db, 'users', u.uid), async (docSnap) => {
           if (docSnap.exists()) {
+            console.log("Profile found for:", u.email);
             setProfile(docSnap.data());
             setLoading(false);
           } else {
+            console.log("No profile found, checking invitations for:", u.email);
             // Check for invitations
             try {
               const emailToSearch = u.email?.trim().toLowerCase();
@@ -42,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const invSnap = await getDocs(invQuery);
               
               if (!invSnap.empty) {
+                console.log("Invitation found! Joining...");
                 const invData = invSnap.docs[0].data();
                 const newUserProfile = {
                   id: u.uid,
@@ -55,22 +79,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 
                 await setDoc(doc(db, 'users', u.uid), newUserProfile);
                 await deleteDoc(invSnap.docs[0].ref);
-                
+                console.log("Successfully joined and profile created.");
                 setProfile(newUserProfile);
               } else {
+                console.log("No invitations found for:", u.email);
                 setProfile(null);
               }
             } catch (err) {
-              console.error("Invitation check error:", err);
+              console.error("Invitation check or auto-join error:", err);
               setProfile(null);
             }
             setLoading(false);
           }
         }, (error) => {
-          console.error("Profile snapshot error:", error);
+          console.error("Profile snapshot permission or network error:", error);
           setLoading(false);
         });
       } else {
+        console.log("No user session found.");
         setProfile(null);
         setLoading(false);
       }
@@ -84,7 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    // Using redirect instead of popup to avoid COOP blocks
+    await signInWithRedirect(auth, provider);
   };
 
   const logout = () => signOut(auth);

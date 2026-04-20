@@ -105,8 +105,8 @@ service cloud.firestore {
     match /invitations/{invId} {
       allow get, list: if isAuthReady() && (
         isSuperAdmin() || 
-        (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower()) ||
-        (belongsToTenant(resource.data.tenant_id))
+        (resource.data.email.lower() == request.auth.token.email.lower()) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getProfile(request.auth.uid).tenant_id == resource.data.tenant_id)
       );
       
       allow create: if isAuthReady() && (
@@ -122,7 +122,7 @@ service cloud.firestore {
       allow delete: if isAuthReady() && (
         isSuperAdmin() || 
         (isClientAdmin(existing().tenant_id)) || 
-        (existing().email == request.auth.token.email || existing().email == request.auth.token.email.lower())
+        (existing().email.lower() == request.auth.token.email.lower())
       );
     }
 
