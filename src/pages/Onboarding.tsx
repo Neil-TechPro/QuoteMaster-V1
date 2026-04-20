@@ -85,7 +85,6 @@ export function Onboarding() {
         gstin: gstin,
         is_active: true,
         quotation_prefix: 'QT-2026-',
-// ... line 27 ...
         invoice_prefix: 'INV-2026-',
         quotation_counter: 1,
         invoice_counter: 1,

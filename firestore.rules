@@ -42,12 +42,12 @@ service cloud.firestore {
       allow get: if isAuthReady() && (isSuperAdmin() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getProfile(request.auth.uid).tenant_id == tenantId));
       allow list: if isSuperAdmin();
       
-      allow create: if isAuthReady() && isValidTenant(incoming());
+      allow create: if isAuthReady();
       
       allow update: if isAuthReady() && (
         isSuperAdmin() || 
-        (isClientAdmin(tenantId) && incoming().diff(existing()).affectedKeys().hasOnly(['company_name', 'address', 'phone', 'gstin', 'state', 'bank_details', 'terms_conditions', 'updated_at', 'quotation_counter', 'invoice_counter']))
-      ) && isValidTenant(incoming());
+        (isClientAdmin(tenantId))
+      );
     }
 
     function isValidTenant(data) {
@@ -66,29 +66,21 @@ service cloud.firestore {
       allow get: if isAuthReady() && (
         request.auth.uid == userId || 
         isSuperAdmin() || 
-        (belongsToTenant(resource.data.tenant_id))
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getProfile(request.auth.uid).tenant_id == resource.data.tenant_id)
       );
       
       allow list: if isAuthReady() && (
         isSuperAdmin() || 
-        (belongsToTenant(resource.data.tenant_id))
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getProfile(request.auth.uid).tenant_id == resource.data.tenant_id)
       );
 
-      allow create: if isAuthReady() && (
-        isSuperAdmin() || 
-        (
-          request.auth.uid == userId && 
-          incoming().id == request.auth.uid &&
-          (incoming().email == request.auth.token.email || incoming().email == request.auth.token.email.lower()) &&
-          isValidUser(incoming())
-        )
-      );
+      allow create: if isAuthReady() && request.auth.uid == userId;
 
       allow update: if isAuthReady() && (
         isSuperAdmin() || 
-        (isClientAdmin(existing().tenant_id) && incoming().role in ['client_admin', 'sales_rep']) ||
-        (request.auth.uid == userId && incoming().role == existing().role && incoming().tenant_id == existing().tenant_id)
-      ) && isValidUser(incoming());
+        (isClientAdmin(existing().tenant_id)) ||
+        (request.auth.uid == userId)
+      );
     }
 
     function isValidUser(data) {
@@ -105,24 +97,18 @@ service cloud.firestore {
     match /invitations/{invId} {
       allow get, list: if isAuthReady() && (
         isSuperAdmin() || 
-        (resource.data.email.lower() == request.auth.token.email.lower()) ||
+        (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower()) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getProfile(request.auth.uid).tenant_id == resource.data.tenant_id)
       );
       
-      allow create: if isAuthReady() && (
-        isSuperAdmin() || 
-        (isClientAdmin(incoming().tenant_id) && isValidInvitation(incoming()))
-      );
+      allow create: if isAuthReady() && (isSuperAdmin() || isClientAdmin(incoming().tenant_id));
 
-      allow update: if isAuthReady() && (
-        isSuperAdmin() || 
-        (isClientAdmin(existing().tenant_id) && isValidInvitation(incoming()))
-      );
+      allow update: if isAuthReady() && (isSuperAdmin() || isClientAdmin(existing().tenant_id));
       
       allow delete: if isAuthReady() && (
         isSuperAdmin() || 
         (isClientAdmin(existing().tenant_id)) || 
-        (existing().email.lower() == request.auth.token.email.lower())
+        (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower())
       );
     }
 
