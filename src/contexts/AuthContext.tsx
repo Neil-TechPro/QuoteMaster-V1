@@ -37,7 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             // Check for invitations
             try {
-              const invQuery = query(collection(db, 'invitations'), where('email', '==', u.email?.toLowerCase()));
+              const emailToSearch = u.email?.trim().toLowerCase();
+              const invQuery = query(collection(db, 'invitations'), where('email', '==', emailToSearch));
               const invSnap = await getDocs(invQuery);
               
               if (!invSnap.empty) {

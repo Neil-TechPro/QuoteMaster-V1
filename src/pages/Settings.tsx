@@ -171,7 +171,7 @@ export function Settings() {
     setSaving(true);
     try {
       await addDoc(collection(db, 'invitations'), {
-        email: userForm.email.toLowerCase(),
+        email: userForm.email.trim().toLowerCase(),
         name: userForm.name,
         role: userForm.role,
         tenant_id: profile.tenant_id,
