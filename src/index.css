@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-primary: #1e3a8a; /* blue-900 / dark blue */
+  --color-primary-light: #eff6ff; /* blue-50 */
+  --color-secondary: #0f172a; /* slate-900 */
+  --color-background-light: #f8fafc; /* slate-50 */
+  --color-surface: #ffffff;
+  --color-text-main: #0f172a; /* slate-900 */
+  --color-muted: #64748b; /* slate-500 */
+  --color-border-main: #e2e8f0; /* slate-200 */
+  
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-3xl: 1.5rem;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-soft: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-hover: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+@layer base {
+  body {
+    @apply bg-background-light text-text-main font-sans antialiased;
+  }
+}

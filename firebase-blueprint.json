@@ -1,0 +1,129 @@
+{
+  "entities": {
+    "Tenant": {
+      "title": "Tenant",
+      "description": "A client company using the platform.",
+      "type": "object",
+      "properties": {
+        "company_name": { "type": "string" },
+        "logo_url": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "gstin": { "type": "string" },
+        "state": { "type": "string" },
+        "bank_details": {
+          "type": "object",
+          "properties": {
+            "bank_name": { "type": "string" },
+            "account_number": { "type": "string" },
+            "ifsc": { "type": "string" },
+            "branch": { "type": "string" }
+          }
+        },
+        "terms_conditions": { "type": "string" },
+        "quotation_prefix": { "type": "string" },
+        "invoice_prefix": { "type": "string" },
+        "quotation_counter": { "type": "integer" },
+        "invoice_counter": { "type": "integer" },
+        "is_active": { "type": "boolean" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["company_name", "quotation_prefix", "invoice_prefix", "quotation_counter", "invoice_counter", "is_active"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A user of the platform belonging to a tenant.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenant_id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["super_admin", "client_admin", "sales_rep"] },
+        "is_active": { "type": "boolean" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tenant_id", "name", "email", "role", "is_active"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Per-tenant product catalogue item.",
+      "type": "object",
+      "properties": {
+        "tenant_id": { "type": "string" },
+        "name": { "type": "string" },
+        "hsn_code": { "type": "string" },
+        "unit": { "type": "string" },
+        "default_price": { "type": "number" },
+        "default_gst_rate": { "type": "number" },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["tenant_id", "name", "is_active"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Buyer record for a tenant.",
+      "type": "object",
+      "properties": {
+        "tenant_id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "email": { "type": "string" },
+        "gstin": { "type": "string" },
+        "state": { "type": "string" }
+      },
+      "required": ["tenant_id", "name"]
+    },
+    "Quotation": {
+      "title": "Quotation",
+      "description": "Sales quotation scoped to a tenant.",
+      "type": "object",
+      "properties": {
+        "tenant_id": { "type": "string" },
+        "quotation_number": { "type": "string" },
+        "client_id": { "type": "string" },
+        "sales_rep_id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "valid_until": { "type": "string", "format": "date-time" },
+        "subtotal": { "type": "number" },
+        "cgst": { "type": "number" },
+        "sgst": { "type": "number" },
+        "igst": { "type": "number" },
+        "grand_total": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "sent", "accepted", "converted", "expired"] },
+        "sync_status": { "type": "string", "enum": ["synced", "pending"] },
+        "notes": { "type": "string" }
+      },
+      "required": ["tenant_id", "quotation_number", "client_id", "sales_rep_id", "status"]
+    },
+    "QuotationItem": {
+      "title": "QuotationItem",
+      "description": "Line item for a quotation.",
+      "type": "object",
+      "properties": {
+        "quotation_id": { "type": "string" },
+        "product_id": { "type": "string" },
+        "product_name": { "type": "string" },
+        "hsn_code": { "type": "string" },
+        "unit": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit_price": { "type": "number" },
+        "gst_rate": { "type": "number" },
+        "line_total": { "type": "number" }
+      },
+      "required": ["quotation_id", "product_name", "quantity", "unit_price", "line_total"]
+    }
+  },
+  "firestore": {
+    "tenants": { "schema": "Tenant", "description": "Client companies" },
+    "users": { "schema": "User", "description": "Platform users" },
+    "products": { "schema": "Product", "description": "Product catalogues" },
+    "clients": { "schema": "Client", "description": "Buyer records" },
+    "quotations": { "schema": "Quotation", "description": "Quotations" },
+    "quotations/{quotationId}/items": { "schema": "QuotationItem", "description": "Line items for quotations" }
+  }
+}
