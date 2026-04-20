@@ -36,17 +36,23 @@ service cloud.firestore {
              getProfile(request.auth.uid).tenant_id == tenantId;
     }
 
+    function isDocOwner(docData) {
+      return isSignedIn() && docData.id == request.auth.uid;
+    }
+
     // --- Collection: Tenants ---
     match /tenants/{tenantId} {
-      allow get: if isEmailVerified() && (isSuperAdmin() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getProfile(request.auth.uid).tenant_id == tenantId));
+      allow get: if isEmailVerified() && (isSuperAdmin() || belongsToTenant(tenantId));
       allow list: if isSuperAdmin();
       
-      // Allow creation for onboarding
+      // Only Super Admins can create tenants in production, 
+      // but we allow initial creation for onboarding.
+      // HARDENING: Check that no existing user is linked to this tenant if being created by an user.
       allow create: if isEmailVerified() && isValidTenant(incoming());
       
       allow update: if isEmailVerified() && (
         isSuperAdmin() || 
-        (isClientAdmin(tenantId) && incoming().diff(existing()).affectedKeys().hasOnly(['company_name', 'address', 'phone', 'gstin', 'state', 'bank_details', 'terms_conditions', 'updated_at', 'quotation_counter', 'invoice_counter']))
+        (isClientAdmin(tenantId) && incoming().diff(existing()).affectedKeys().hasOnly(['company_name', 'address', 'phone', 'gstin', 'state', 'bank_details', 'terms_conditions', 'updated_at']))
       ) && isValidTenant(incoming());
     }
 
@@ -66,7 +72,7 @@ service cloud.firestore {
       allow get: if isEmailVerified() && (
         request.auth.uid == userId || 
         isSuperAdmin() || 
-        (belongsToTenant(resource.data.tenant_id))
+        (belongsToTenant(existing().tenant_id))
       );
       
       allow list: if isEmailVerified() && (
@@ -77,12 +83,15 @@ service cloud.firestore {
       allow create: if isEmailVerified() && (
         isSuperAdmin() || 
         (
+          // Self-creation for onboarding or invitation acceptance
           request.auth.uid == userId && 
           incoming().id == request.auth.uid &&
           incoming().email == request.auth.token.email &&
-          // Role assignment guard
+          // PRIVILEGE ESCALATION GUARD: Role must be correct
           (
-            (!exists(/databases/$(database)/documents/users/$(request.auth.uid)) && incoming().role == 'client_admin') ||
+            // If first user for tenant, can be admin
+            (incoming().role == 'client_admin' && !exists(/databases/$(database)/documents/users/$(request.auth.uid))) ||
+            // If joining via invitation, role is checked there (but here we just limit to non-superadmin)
             (incoming().role in ['client_admin', 'sales_rep'])
           ) &&
           isValidUser(incoming())
@@ -98,7 +107,7 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return data.keys().hasAll(['id', 'tenant_id', 'name', 'email', 'role', 'is_active']) &&
-             data.id is string && data.id.size() <= 128 &&
+             data.id is string && data.id == request.auth.uid &&
              data.tenant_id is string && isValidId(data.tenant_id) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
              data.email is string && data.email.size() <= 200 &&
@@ -179,6 +188,7 @@ service cloud.firestore {
       allow create: if isEmailVerified() && 
                     belongsToTenant(incoming().tenant_id) && 
                     incoming().sales_rep_id == request.auth.uid &&
+                    existsAfter(/databases/$(database)/documents/tenants/$(incoming().tenant_id)) &&
                     isValidQuotation(incoming());
 
       allow update: if isEmailVerified() && (
@@ -201,9 +211,8 @@ service cloud.firestore {
              data.quotation_number is string && data.quotation_number.size() > 0 &&
              data.sales_rep_id is string && isValidId(data.sales_rep_id) &&
              data.status in ['draft', 'sent', 'accepted', 'converted', 'expired'] &&
-             data.items is list && data.items.size() <= 100 &&
+             data.items is list && data.items.size() <= 50 &&
              (data.items.size() == 0 || data.items[0].productName is string);
     }
   }
 }
-

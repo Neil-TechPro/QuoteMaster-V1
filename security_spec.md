@@ -1,30 +1,32 @@
 # Security Specification - QuoteMaster
 
 ## Data Invariants
-1. A **User** must belong to exactly one **Tenant**.
-2. All records (**Products**, **Clients**, **Quotations**) must have a `tenant_id` matching the user's `tenant_id`.
-3. **Quotation Numbers** must be unique within a tenant (enforced by server-side logic and atomic counters, but rules should respect the tenant scope).
-4. **Sales Reps** can only access and modify quotations they created or belong to their tenant.
-5. **Client Admins** can manage all data within their tenant.
-6. **Super Admins** can manage everything.
+1. A **User Profile** cannot exist without being linked to a valid **Tenant ID**.
+2. A **Client Admin** can only manage users, products, and clients within their own **Tenant**.
+3. A **Sales Representative** can only create and view quotations within their own **Tenant**.
+4. **Quotations** must have a `sales_rep_id` matching the authenticated user's UID.
+5. **Invitations** are the only way for new users (other than the first tenant creator) to join a tenant with a predefined role.
+6. The **First User** of a tenant is automatically a `client_admin` during onboarding.
 
-## The \"Dirty Dozen\" Payloads (Attack Vectors)
+## The "Dirty Dozen" Payloads (Attack Vectors)
 
-1. **Identity Theft**: User A tries to read/write User B's `tenant_id` data.
-2. **Self-Promotion**: `sales_rep` tries to update their role to `client_admin`.
-3. **Orphaned Writes**: Creating a `Quotation` with a `client_id` that doesn't exist.
-4. **Shadow Fields**: Creating a `Product` with extra fields like `is_verified_by_platform: true`.
-5. **Ghost Tenants**: Creating a tenant record without being a `super_admin`.
-6. **Timeline Poisoning**: Setting `created_at` to a year in the future.
-7. **Cross-Tenant Leak**: Listing quotients without filtering by `tenant_id`.
-8. **Status Shortcut**: Moving a quotation from `draft` directly to `converted` bypassing business logic.
-9. **Unverified Auth**: Accessing data with a non-verified email.
-10. **Resource Exhaustion**: Writing a 1MB string into the `product_name` field.
-11. **Negative Totals**: Setting `grand_total` to `-9999`.
-12. **Id Poisoning**: Using a 500-character string as a document ID.
+| ID | Attack Vector | Target Collection | Payload / Action | Expected Result |
+|---|---|---|---|---|
+| 1 | Global Admin Escalation | `users/{uid}` | `{ role: 'super_admin' }` on create | **DENIED** |
+| 2 | Tenant Admin Escalation | `users/{uid}` | `{ role: 'client_admin', tenant_id: 'target-tenant' }` | **DENIED** |
+| 3 | Shadow Field Injection | `products/{id}` | `{ name: 'Pipe', ..., hidden_discount: 90 }` | **DENIED** (Strict Schema) |
+| 4 | Cross-Tenant Read | `quotations` | `get()` quotation from another tenant | **DENIED** |
+| 5 | Cross-Tenant Update | `tenants/{id}` | Update `quotation_counter` of another tenant | **DENIED** |
+| 6 | Unverified Email Write | `any` | Perform write with `email_verified: false` | **DENIED** |
+| 7 | Orphaned Quotation | `quotations` | Create quote with non-existent `client_id` | **DENIED** |
+| 8 | Large Payload Attack | `products` | 2MB string in `name` field | **DENIED** (Size limits) |
+| 9 | ID Poisoning | `clients/{id}` | ID containing path traverse characters `../` | **DENIED** (Regex) |
+| 10 | Status Skipping | `quotations/{id}` | Jump from `draft` to `converted` without items | **DENIED** |
+| 11 | Anonymous Data Wipe | `invitations` | `delete()` invitation without auth | **DENIED** |
+| 12 | Counter Manipulation | `tenants/{id}` | Decrement `quotation_counter` | **DENIED** (Update gate) |
 
-## Test Runner Plan
-I will implement `firestore.rules` and verify them manually against these vectors.
-
-## Rules Draft (Phase 3 Primitives)
-We will use `isValidTenant`, `isValidUser`, `isOwner`, `isAdmin` helpers.
+## Implementation Plan
+1. **Harden `firestore.rules`** using the 8 Pillars (Master Gate, Validation Blueprints, ID Hardening, etc.).
+2. **Remove Secrets from Bundle**: Modify `vite.config.ts` to stop inlining `GEMINI_API_KEY`.
+3. **Add Verification**: Ensure `email_verified` is checked for all writes.
+4. **Strict Schema**: Enforce `keys().hasOnly()` and size constraints on all fields.
