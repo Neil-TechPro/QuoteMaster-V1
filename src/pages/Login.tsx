@@ -20,6 +20,7 @@ export function Login() {
     setSigningIn(true);
     try {
       await login();
+      // login via redirect doesn't return, page will navigate away
     } catch (err: any) {
       console.error("Login failed:", err);
       if (err.code === 'auth/popup-blocked') {
@@ -29,10 +30,20 @@ export function Login() {
       } else {
         setError("Failed to sign in. Please try again.");
       }
-    } finally {
       setSigningIn(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary text-primary"></div>
+          <p className="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Verifying Session...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">

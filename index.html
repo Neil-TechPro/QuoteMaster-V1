@@ -3,7 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <title>QuoteMaster | Enterprise SaaS Billing</title>
+    <script>
+      // Force unregister any existing service workers to fix the "Failed to fetch" loop
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister().then(function(success) {
+              if (success) console.log('Successfully unregistered service worker');
+            });
+          }
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

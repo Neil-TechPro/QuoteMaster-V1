@@ -27,9 +27,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | null = null;
+    let isInitialAuth = true;
 
     // Handle sign-in redirect result
-    const handleRedirect = async () => {
+    const handleInitialAuth = async () => {
       try {
         const result = await getRedirectResult(auth);
         if (result) {
@@ -37,9 +38,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         console.error("Redirect login result error:", err);
+      } finally {
+        // Only after checking redirect result do we let the auth listener take over
+        isInitialAuth = false;
+        // If onAuthStateChanged already fired and set things up, it might have missed the loading flip
+        // But usually it fires after or during this.
       }
     };
-    handleRedirect();
+    handleInitialAuth();
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -55,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (docSnap.exists()) {
             console.log("Profile found for:", u.email);
             setProfile(docSnap.data());
-            setLoading(false);
+            if (!isInitialAuth) setLoading(false);
           } else {
             console.log("No profile found, checking invitations for:", u.email);
             // Check for invitations
@@ -89,20 +95,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.error("Invitation check or auto-join error:", err);
               setProfile(null);
             }
-            setLoading(false);
+            if (!isInitialAuth) setLoading(false);
           }
         }, (error) => {
           console.error("Profile snapshot permission or network error:", error);
-          setLoading(false);
+          if (!isInitialAuth) setLoading(false);
         });
       } else {
         console.log("No user session found.");
         setProfile(null);
-        setLoading(false);
+        if (!isInitialAuth) setLoading(false);
       }
     });
 
+    // Final safety timeout to ensure loading doesn't stay true forever 
+    // if something hangs in redirect result or snapshot
+    const timer = setTimeout(() => {
+      isInitialAuth = false;
+      setLoading(false);
+    }, 3000);
+
     return () => {
+      clearTimeout(timer);
       unsubscribeAuth();
       if (unsubscribeProfile) unsubscribeProfile();
     };
