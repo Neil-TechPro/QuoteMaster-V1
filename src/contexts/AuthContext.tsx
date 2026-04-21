@@ -4,7 +4,8 @@ import {
   User as FirebaseUser, 
   signInWithPopup,
   GoogleAuthProvider, 
-  signOut 
+  signOut,
+  sendEmailVerification
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -15,6 +16,8 @@ interface AuthContextType {
   loading: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
+  sendVerification: () => Promise<void>;
+  reloadUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,67 +28,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let unsubscribeProfile: (() => void) | null = null;
-
-    const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      
-      if (unsubscribeProfile) {
-        unsubscribeProfile();
-        unsubscribeProfile = null;
-      }
-
-      if (u) {
-        console.log("Session verified for:", u.email);
-        unsubscribeProfile = onSnapshot(doc(db, 'users', u.uid), async (docSnap) => {
-          if (docSnap.exists()) {
-            setProfile(docSnap.data());
-          } else {
-            // Check for invitations
-            try {
-              const emailToSearch = u.email?.trim().toLowerCase();
-              const invQuery = query(collection(db, 'invitations'), where('email', '==', emailToSearch));
-              const invSnap = await getDocs(invQuery);
-              
-              if (!invSnap.empty) {
-                const invData = invSnap.docs[0].data();
-                const newUserProfile = {
-                  id: u.uid,
-                  tenant_id: invData.tenant_id,
-                  name: invData.name || u.displayName || 'Unnamed Staff',
-                  email: u.email,
-                  role: invData.role || 'sales_rep',
-                  is_active: true,
-                  created_at: serverTimestamp()
-                };
-                
-                await setDoc(doc(db, 'users', u.uid), newUserProfile);
-                await deleteDoc(invSnap.docs[0].ref);
-                setProfile(newUserProfile);
-              } else {
-                setProfile(null);
-              }
-            } catch (err) {
-              console.error("Invitation check error:", err);
-              setProfile(null);
-            }
-          }
-          setLoading(false);
-        }, (error) => {
-          console.error("Profile sync error:", error);
-          setLoading(false);
-        });
-      } else {
+      if (!u) {
         setProfile(null);
         setLoading(false);
       }
     });
 
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    let unsubscribeProfile: (() => void) | null = null;
+
+    if (user) {
+      // Block profile fetch if email is not verified, to match firestore rules
+      if (!user.emailVerified) {
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      console.log("Session verified for:", user.email);
+      unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), async (docSnap) => {
+        if (docSnap.exists()) {
+          setProfile(docSnap.data());
+        } else {
+          // Check for invitations
+          try {
+            const emailToSearch = user.email?.trim().toLowerCase();
+            const invQuery = query(collection(db, 'invitations'), where('email', '==', emailToSearch));
+            const invSnap = await getDocs(invQuery);
+            
+            if (!invSnap.empty) {
+              const invData = invSnap.docs[0].data();
+              const newUserProfile = {
+                id: user.uid,
+                tenant_id: invData.tenant_id,
+                name: invData.name || user.displayName || 'Unnamed Staff',
+                email: user.email,
+                role: invData.role || 'sales_rep',
+                is_active: true,
+                created_at: serverTimestamp()
+              };
+              
+              await setDoc(doc(db, 'users', user.uid), newUserProfile);
+              await deleteDoc(invSnap.docs[0].ref);
+              setProfile(newUserProfile);
+            } else {
+              setProfile(null);
+            }
+          } catch (err) {
+            console.error("Invitation check error:", err);
+            setProfile(null);
+          }
+        }
+        setLoading(false);
+      }, (error) => {
+        console.error("Profile sync error:", error);
+        setLoading(false);
+      });
+    }
+
     return () => {
-      unsubscribeAuth();
       if (unsubscribeProfile) unsubscribeProfile();
     };
-  }, []);
+  }, [user]);
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -103,8 +112,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const sendVerification = async () => {
+    if (auth.currentUser && !auth.currentUser.emailVerified) {
+      await sendEmailVerification(auth.currentUser);
+    }
+  };
+
+  const reloadUser = async () => {
+    if (auth.currentUser) {
+      await auth.currentUser.reload();
+      // Force trigger state update to re-evaluate emailVerified
+      setUser(auth.currentUser ? { ...auth.currentUser } as FirebaseUser : null);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, login, logout, sendVerification, reloadUser }}>
       {children}
     </AuthContext.Provider>
   );

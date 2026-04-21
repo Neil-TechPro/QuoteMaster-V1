@@ -8,8 +8,8 @@ service cloud.firestore {
 
     // --- Phase 3: Primitive Definitions ---
     function isSignedIn() { return request.auth != null; }
-    // Removing strict email_verified requirement to prevent blocks in dev/test accounts
-    function isAuthReady() { return isSignedIn(); }
+    // Enforcing strict email_verified requirement for security
+    function isAuthReady() { return isSignedIn() && request.auth.token.email_verified == true; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$'); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
