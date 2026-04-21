@@ -1,6 +1,6 @@
 {
-  "name": "QuoteMaster",
-  "description": "A multi-tenant field sales quotation and invoice platform with offline-first capabilities, branded PDF generation, and client-specific product catalogues.",
+  "name": "BillKaro",
+  "description": "No call. No wait. Just bill.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

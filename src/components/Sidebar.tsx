@@ -22,10 +22,10 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
     <aside className="w-64 h-full bg-white border-r border-border-main flex flex-col justify-between p-6 overflow-y-auto">
       <div className="space-y-12">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold tracking-tighter">Q</div>
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold tracking-tighter">B</div>
           <div>
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight leading-none">QuoteMaster</h1>
-            <p className="text-[10px] font-black text-muted uppercase tracking-widest mt-1">Multi-Tenant Platform</p>
+            <h1 className="text-lg font-bold text-slate-800 tracking-tight leading-none">BillKaro</h1>
+            <p className="text-[10px] font-black text-muted uppercase tracking-widest mt-1">No call. No wait. Just bill.</p>
           </div>
         </div>
 
@@ -67,7 +67,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
             navigate('/create');
             onClose?.();
           }}
-          className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3.5 px-4 rounded-xl font-bold text-sm shadow-sm hover:bg-indigo-700 transition-all"
+          className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3.5 px-4 rounded-xl font-bold text-sm shadow-sm hover:bg-slate-800 transition-all"
         >
           <PlusCircle size={18} />
           <span>New Quote</span>

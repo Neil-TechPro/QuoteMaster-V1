@@ -49,9 +49,9 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-sm border border-slate-200 p-12 text-center space-y-10">
         <div className="space-y-3">
-          <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto shadow-lg shadow-indigo-100">Q</div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-800">QuoteMaster</h1>
-          <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">Enterprise SaaS Billing</p>
+          <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto shadow-lg">B</div>
+          <h1 className="text-3xl font-black tracking-tight text-slate-800">BillKaro</h1>
+          <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">No call. No wait. Just bill.</p>
         </div>
         
         {error && (

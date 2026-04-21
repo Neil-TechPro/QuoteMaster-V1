@@ -33,7 +33,7 @@ export function generateInvoicePDF(data: PDFData) {
   // Header - Branded (Dark Blue)
   doc.setFontSize(24);
   doc.setTextColor(30, 58, 138); // blue-900 (#1e3a8a)
-  doc.text(tenant.company_name || 'QuoteMaster', 14, 22);
+  doc.text(tenant.company_name || 'BillKaro', 14, 22);
 
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139); // slate-500

@@ -20,8 +20,8 @@ function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-6">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold tracking-tighter">Q</div>
-          <span className="font-bold text-slate-800">QuoteMaster</span>
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold tracking-tighter">B</div>
+          <span className="font-bold text-slate-800">BillKaro</span>
         </div>
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}

@@ -4,6 +4,7 @@ import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { Building2, Package, CreditCard, ShieldCheck, Plus, Trash2, Edit2, Loader2, Save, X, Activity, Users } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { Navigate } from 'react-router-dom';
 
 type SettingsTab = 'company' | 'products' | 'finance' | 'team';
 
@@ -48,6 +49,7 @@ export function Settings() {
   const [team, setTeam] = useState<UserProfile[]>([]);
   const [invitations, setInvitations] = useState<any[]>([]);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [inviteSuccessLink, setInviteSuccessLink] = useState<string | null>(null);
   const [userForm, setUserForm] = useState({
     name: '',
     email: '',
@@ -67,14 +69,26 @@ export function Settings() {
     is_active: true
   });
 
+  // Block non-admins entirely to enforce permissions.
+  if (profile?.role === 'sales_rep') {
+    return <Navigate to="/" replace />;
+  }
+
   useEffect(() => {
     if (!profile?.tenant_id) return;
 
     // Fetch Tenant
     const fetchTenant = async () => {
-      const snap = await getDoc(doc(db, 'tenants', profile.tenant_id!));
-      if (snap.exists()) setTenant(snap.data());
-      setLoading(false);
+      try {
+        const snap = await getDoc(doc(db, 'tenants', profile.tenant_id!));
+        if (snap.exists()) {
+          setTenant(snap.data());
+        }
+      } catch (err) {
+        console.error("Settings: Failed to load tenant configuration:", err);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchTenant();
 
@@ -178,14 +192,23 @@ export function Settings() {
         invited_by: profile.id,
         created_at: serverTimestamp()
       });
-      alert(`Invitation sent to ${userForm.email}`);
-      setIsUserModalOpen(false);
-      setUserForm({ name: '', email: '', role: 'sales_rep' });
+      // Set the success link so the admin can copy it to their clipboard
+      setInviteSuccessLink(window.location.origin);
     } catch (err) {
       console.error(err);
-      alert('Error sending invitation');
+      alert('Error saving invitation configuration.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const copyInviteLink = () => {
+    if (inviteSuccessLink) {
+      navigator.clipboard.writeText(`You have been invited to BillKaro! Please log in using your authorized email address at: ${inviteSuccessLink}`);
+      alert("Invitation instructions copied to clipboard! Share it with the user via Chat or Email.");
+      setInviteSuccessLink(null);
+      setIsUserModalOpen(false);
+      setUserForm({ name: '', email: '', role: 'sales_rep' });
     }
   };
 
@@ -399,7 +422,7 @@ export function Settings() {
           <div className="space-y-6">
             <div className="flex justify-between items-center bg-white p-6 rounded-[2rem] border border-slate-200">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-50 text-primary rounded-2xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-slate-100 text-primary rounded-2xl flex items-center justify-center">
                   <Package size={24} />
                 </div>
                 <div>
@@ -441,7 +464,7 @@ export function Settings() {
                       <td className="px-8 py-5 text-sm font-bold text-slate-500">{p.unit}</td>
                       <td className="px-8 py-5">
                         <p className="font-bold text-slate-800">${p.default_price.toLocaleString()}</p>
-                        <p className="text-[10px] text-indigo-500 font-bold uppercase">{p.default_gst_rate}% GST</p>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase">{p.default_gst_rate}% GST</p>
                       </td>
                       <td className="px-8 py-5">
                         <button 
@@ -636,51 +659,77 @@ export function Settings() {
           <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden">
             <div className="p-8 border-b border-slate-100 flex items-center justify-between">
               <h3 className="text-2xl font-black text-slate-800 tracking-tight">Invite Team Member</h3>
-              <button onClick={() => setIsUserModalOpen(false)} className="p-2 text-slate-300 hover:text-slate-800">
+              <button onClick={() => {
+                setIsUserModalOpen(false);
+                setInviteSuccessLink(null);
+                setUserForm({ name: '', email: '', role: 'sales_rep' });
+              }} className="p-2 text-slate-300 hover:text-slate-800">
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleUserInvite} className="p-8 space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Name</label>
-                  <input
-                    required
-                    className="w-full h-12 bg-slate-50 border-none rounded-xl px-4 focus:ring-1 focus:ring-primary text-sm font-bold text-slate-800"
-                    placeholder="e.g. John Doe"
-                    value={userForm.name}
-                    onChange={e => setUserForm({...userForm, name: e.target.value})}
-                  />
+            {inviteSuccessLink ? (
+              <div className="p-8 space-y-6 text-center">
+                <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto">
+                  <ShieldCheck size={32} />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    className="w-full h-12 bg-slate-50 border-none rounded-xl px-4 focus:ring-1 focus:ring-primary text-sm font-bold text-slate-800"
-                    placeholder="john@example.com"
-                    value={userForm.email}
-                    onChange={e => setUserForm({...userForm, email: e.target.value})}
-                  />
+                <div>
+                  <h4 className="text-lg font-black text-slate-800">Access Granted Internally!</h4>
+                  <p className="text-sm text-slate-500 mt-2">
+                    The platform does not send automated emails to prevent spam routing issues. 
+                    Please manually share the login link with <strong>{userForm.name}</strong> 
+                    and tell them to sign in using their authorized email: <strong>{userForm.email}</strong>.
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Platform Role</label>
-                  <select
-                    className="w-full h-12 bg-slate-50 border-none rounded-xl px-4 focus:ring-1 focus:ring-primary text-sm font-bold text-slate-800"
-                    value={userForm.role}
-                    onChange={e => setUserForm({...userForm, role: e.target.value as any})}
-                  >
-                    <option value="sales_rep">Sales Representative</option>
-                    <option value="client_admin">Store Admin</option>
-                  </select>
-                </div>
-              </div>
-              <div className="pt-4">
-                <button type="submit" disabled={saving} className="w-full h-12 bg-primary text-white rounded-xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-blue-900/10 hover:bg-blue-800 transition-all flex items-center justify-center gap-2">
-                  {saving ? <Loader2 className="animate-spin" size={18} /> : 'Send Invite'}
+                <button 
+                  onClick={copyInviteLink} 
+                  className="w-full h-12 bg-emerald-500 text-white rounded-xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center justify-center"
+                >
+                  Copy Login Instructions
                 </button>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handleUserInvite} className="p-8 space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Name</label>
+                    <input
+                      required
+                      className="w-full h-12 bg-slate-50 border-none rounded-xl px-4 focus:ring-1 focus:ring-primary text-sm font-bold text-slate-800"
+                      placeholder="e.g. John Doe"
+                      value={userForm.name}
+                      onChange={e => setUserForm({...userForm, name: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      className="w-full h-12 bg-slate-50 border-none rounded-xl px-4 focus:ring-1 focus:ring-primary text-sm font-bold text-slate-800"
+                      placeholder="john@example.com"
+                      value={userForm.email}
+                      onChange={e => setUserForm({...userForm, email: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Platform Role</label>
+                    <select
+                      className="w-full h-12 bg-slate-50 border-none rounded-xl px-4 focus:ring-1 focus:ring-primary text-sm font-bold text-slate-800"
+                      value={userForm.role}
+                      onChange={e => setUserForm({...userForm, role: e.target.value as any})}
+                    >
+                      <option value="sales_rep">Sales Representative</option>
+                      <option value="client_admin">Store Admin</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="pt-4">
+                  <button type="submit" disabled={saving} className="w-full h-12 bg-primary text-white rounded-xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-blue-900/10 hover:bg-blue-800 transition-all flex items-center justify-center gap-2">
+                    {saving ? <Loader2 className="animate-spin" size={18} /> : 'Authorize Member'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
