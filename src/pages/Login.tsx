@@ -4,8 +4,8 @@ import { LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function Login() {
-  const { login, user, loading: authLoading } = useAuth();
-  const [error, setError] = React.useState<string | null>(null);
+  const { login, user, loading: authLoading, authError } = useAuth();
+  const [localError, setLocalError] = React.useState<string | null>(null);
   const [signingIn, setSigningIn] = React.useState(false);
   const navigate = useNavigate();
 
@@ -16,7 +16,7 @@ export function Login() {
   }, [user, authLoading, navigate]);
 
   const handleLogin = async () => {
-    setError(null);
+    setLocalError(null);
     setSigningIn(true);
     try {
       await login();
@@ -24,15 +24,17 @@ export function Login() {
     } catch (err: any) {
       console.error("Login failed:", err);
       if (err.code === 'auth/popup-blocked') {
-        setError("Sign-in popup was blocked. Please allow popups for this site.");
+        setLocalError("Sign-in popup was blocked. Please allow popups for this site.");
       } else if (err.code === 'auth/popup-closed-by-user') {
-        setError("Sign-in process was cancelled.");
+        setLocalError("Sign-in process was cancelled.");
       } else {
-        setError("Failed to sign in. Please try again.");
+        setLocalError("Failed to sign in. Please try again.");
       }
       setSigningIn(false);
     }
   };
+
+  const displayError = localError || authError;
 
   if (authLoading) {
     return (
@@ -54,9 +56,9 @@ export function Login() {
           <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">No call. No wait. Just bill.</p>
         </div>
         
-        {error && (
+        {displayError && (
           <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-xs font-bold animate-in fade-in slide-in-from-top-1">
-            {error}
+            {displayError}
           </div>
         )}
 

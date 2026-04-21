@@ -14,6 +14,7 @@ interface AuthContextType {
   user: FirebaseUser | null;
   profile: any | null;
   loading: boolean;
+  authError: string | null;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   sendVerification: () => Promise<void>;
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
@@ -77,7 +79,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await deleteDoc(invSnap.docs[0].ref);
               setProfile(newUserProfile);
             } else {
-              setProfile(null);
+              // NO INVITATION FOUND
+              if (emailToSearch === 'ayurmeans@gmail.com') {
+                // Allow root admin to proceed to Onboarding / New Workspace creation
+                setProfile(null);
+              } else {
+                // UNAUTHORIZED USER FLAG & KICK
+                console.warn(`Unauthorized login attempt by: ${emailToSearch}`);
+                setAuthError("You are not a sales representative. Please contact BillKaro team for your credentials.");
+                await signOut(auth);
+                setUser(null);
+                setProfile(null);
+              }
             }
           } catch (err) {
             console.error("Invitation check error:", err);
@@ -97,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const login = async () => {
+    setAuthError(null);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     await signInWithPopup(auth, provider);
@@ -127,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, login, logout, sendVerification, reloadUser }}>
+    <AuthContext.Provider value={{ user, profile, loading, authError, login, logout, sendVerification, reloadUser }}>
       {children}
     </AuthContext.Provider>
   );
